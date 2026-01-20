@@ -145,11 +145,12 @@ st.sidebar.subheader("Generation Settings")
 num_samples = st.sidebar.slider(
     "Number of samples",
     min_value=10,
-    max_value=1000,
-    value=100,
+    max_value=50,
+    value=10,
     step=10,
-    help="Number of RLHF data points to generate",
+    help="Number of RLHF data points to generate. Free demo limited to 50 samples.",
 )
+st.sidebar.info("💎 Want up to 1000 samples? [Get full access on REPPO](https://reppo.ai/pods/rlhf-data-agent)")
 
 # Dynamic cost estimate based on slider value
 if selected_model_config.requires_api_key:
@@ -232,7 +233,7 @@ else:
 # =============================================================================
 # MAIN CONTENT
 # =============================================================================
-st.title("🤖 RLHF Data Agent")
+st.title("🤖 RLHF Data Agent - Free Demo")
 st.markdown(
     """
 Generate preference-ranked coding data for RLHF/DPO training.
@@ -240,8 +241,10 @@ Specialized for ML/Data tasks (pandas, numpy, sklearn, pytorch).
 
 **RLHF Relevance**: Each data point contains a prompt with two responses ranked by
 efficiency and clarity, enabling direct use in preference learning pipelines.
-"""
-)
+
+**🆓 Demo Mode:** Limited to 50 samples  
+**💎 Full Version:** Up to 1000 samples on [REPPO Pod](https://reppo.ai/pods/rlhf-data-agent)
+""")
 
 # Tabs for different views
 tab_generate, tab_preview, tab_export, tab_about = st.tabs(
