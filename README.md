@@ -23,10 +23,6 @@ For each prompt, the agent:
 - **Scalability**: Handles 1-1000+ samples with rate limiting
 - **REPPO Integration**: Designed for pod hosting—generate custom datasets as a paid service
 
-## Screenshots
-
-*(Add screenshots of the interface showing model selection, generation settings, progress bar, and dataset preview)*
-
 ## Installation
 
 ```bash
