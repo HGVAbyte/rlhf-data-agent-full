@@ -1,5 +1,5 @@
 """
-RLHF Data Agent - Streamlit Application
+RLHF Data Agent - Streamlit Demo Application
 
 A web interface for generating RLHF/DPO training data for ML/Data coding assistance.
 Designed for publication on reppo.ai.
@@ -82,11 +82,17 @@ if "session_usage" not in st.session_state:
     st.session_state.session_usage = TokenUsage()
 if "session_cost" not in st.session_state:
     st.session_state.session_cost = 0.0
+if "partial_data" not in st.session_state:
+    st.session_state.partial_data = []  # Store partial results during generation
 
 # Clean up any stale stop flag on fresh page load
 # This prevents getting stuck if the app was closed mid-generation
 if not st.session_state.generation_in_progress:
     clear_stop_flag()
+    # If we have partial data from a stopped generation, promote it to generated_data
+    if st.session_state.partial_data:
+        st.session_state.generated_data = st.session_state.partial_data
+        st.session_state.partial_data = []
 
 
 # =============================================================================
@@ -148,7 +154,7 @@ num_samples = st.sidebar.slider(
     max_value=1000,
     value=100,
     step=10,
-    help="Number of RLHF data points to generate.",
+    help="Number of RLHF data points to generate",
 )
 
 # Dynamic cost estimate based on slider value
@@ -240,7 +246,8 @@ Specialized for ML/Data tasks (pandas, numpy, sklearn, pytorch).
 
 **RLHF Relevance**: Each data point contains a prompt with two responses ranked by
 efficiency and clarity, enabling direct use in preference learning pipelines.
-""")
+"""
+)
 
 # Tabs for different views
 tab_generate, tab_preview, tab_export, tab_about = st.tabs(
@@ -297,10 +304,11 @@ with tab_generate:
             ):
                 set_stop_flag()
                 st.session_state.stop_requested = True
-                st.warning("⏳ Stopping generation after current API call completes...")
-                st.rerun()  # Rerun to update UI immediately
+                # Mark generation as not in progress so partial data gets promoted on rerun
+                st.session_state.generation_in_progress = False
+                # The rerun will promote partial_data to generated_data via session state init
 
-            if check_stop_flag():
+            if check_stop_flag() or st.session_state.stop_requested:
                 st.warning("⏳ Stop requested - waiting for current API call to complete...")
 
         # Run generation if in progress
@@ -368,6 +376,13 @@ with tab_generate:
                 # Use file-based flag for reliable stop detection during sync operations
                 return check_stop_flag()
 
+            def save_data_point(data_point):
+                # Save each data point incrementally to survive Streamlit reruns
+                st.session_state.partial_data.append(data_point)
+
+            # Clear any previous partial data before starting
+            st.session_state.partial_data = []
+
             # Generate data points
             try:
                 data_points, total_usage = generate_batch_sync(
@@ -377,9 +392,11 @@ with tab_generate:
                     on_progress=update_progress,
                     should_stop=check_stop,
                     on_usage_update=update_cost,
+                    on_data_point=save_data_point,
                 )
 
                 st.session_state.generated_data = data_points
+                st.session_state.partial_data = []  # Clear partial data on success
                 # Update session usage with final total
                 st.session_state.session_usage.add(total_usage)
                 final_cost = total_usage.calculate_cost(
@@ -404,7 +421,11 @@ with tab_generate:
                     st.warning("⚠️ Generation stopped before any data was generated.")
 
             except Exception as e:
+                # Check if we have any data generated before the error
+                # This can happen if Ollama times out or connection drops
                 st.error(f"❌ Error during generation: {str(e)}")
+                import traceback
+                st.expander("Error details").code(traceback.format_exc())
 
             finally:
                 st.session_state.generation_in_progress = False
